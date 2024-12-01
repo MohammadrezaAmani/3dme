@@ -72,7 +72,7 @@
         top: 10px;
         right: 50px;
         z-index: 20;
-        background-color: #ff6347;
+        background-color: #5fec97;
         padding: 10px;
         border-radius: 5px;
         cursor: pointer;
@@ -85,13 +85,18 @@
         font-size: 14px;
         color: #888;
       }
-      a {
-        position: fixed;
-        bottom: 10px;
-        width: 100%;
-        text-align: center;
-        font-size: 14px;
-        color: #888;
+      a:link {
+        color: #7eb4b2;
+      }
+
+      /* visited link */
+      a:visited {
+        color: #7eb4b2;
+      }
+
+      /* selected link */
+      a:active {
+        color: #7eb4b2;
       }
     </style>
   </head>
@@ -255,7 +260,9 @@
     </script>
     <footer>
       Created with ❤️ by
-      <a href="https://github.com/MohammadrezaAmani"> Mohammadreza Amani</a>
+      <a class="link" href="https://github.com/MohammadrezaAmani">
+        Mohammadreza Amani</a
+      >
     </footer>
   </body>
 </html>
