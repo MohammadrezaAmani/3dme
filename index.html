@@ -158,7 +158,7 @@
       let rotationSpeed = 0.002;
       let distance = 1;
       let zindex = 1;
-      let currentImage = null; // ذخیره تصویر فعلی
+      let currentImage = null;
 
       function clearScene() {
         while (scene.children.length > 2) {
@@ -368,18 +368,15 @@
           const view = new DataView(buffer);
           let offset = 0;
 
-          // Write ply header
           for (let i = 0; i < plyData.length; i++) {
             view.setUint8(offset++, plyData.charCodeAt(i));
           }
 
-          // Write vertex data
           for (let i = 0; i < vertices.length; i++) {
             view.setInt32(offset, vertices[i]);
             offset += 4;
           }
 
-          // Create a Blob from the binary data and trigger a download
           const blob = new Blob([buffer], { type: "application/octet-stream" });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
