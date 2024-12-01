@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -34,8 +33,6 @@
     />
     <meta property="twitter:image" content="/assets/logo.webp" />
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r110/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
     <style>
       body {
         margin: 0;
@@ -43,6 +40,7 @@
         font-family: Arial, sans-serif;
         position: relative;
       }
+
       #controls {
         position: fixed;
         top: 10px;
@@ -54,19 +52,18 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         transition: left 0.3s;
       }
+
       #controls.open {
         left: 10px;
       }
+
       #controls input,
       #controls label,
       #controls button {
         display: block;
         margin-bottom: 8px;
       }
-      #controls label {
-        font-size: 14px;
-        font-weight: bold;
-      }
+
       #toggleMenu {
         position: absolute;
         top: 10px;
@@ -77,6 +74,7 @@
         border-radius: 5px;
         cursor: pointer;
       }
+
       footer {
         position: fixed;
         bottom: 10px;
@@ -100,39 +98,39 @@
       }
     </style>
   </head>
+
   <body>
     <div id="toggleMenu">☰</div>
     <div id="controls">
-      <label for="pointSize">Point Size</label
-      ><input
+      <label for="pointSize">Point Size</label>
+      <input
         type="range"
         id="pointSize"
         min="0.1"
         max="3"
         step="0.1"
         value="0.5"
-      /><label for="backgroundColor">Background Color</label
-      ><input type="color" id="backgroundColor" value="#000000" /><label
-        for="rotationSpeed"
-        >Rotation Speed</label
-      ><input
+      />
+      <label for="backgroundColor">Background Color</label>
+      <input type="color" id="backgroundColor" value="#000000" />
+      <label for="rotationSpeed">Rotation Speed</label>
+      <input
         type="range"
         id="rotationSpeed"
         min="0"
         max="0.02"
         step="0.001"
         value="0.002"
-      /><label for="zindex">Z-Index</label
-      ><input
-        type="range"
-        id="zindex"
-        min="0"
-        max="5"
-        step="0.1"
-        value="1"
-      /><button id="toggleRotation">Toggle Auto-Rotate</button
-      ><input type="file" id="imageInput" accept="image/*" />
+      />
+      <label for="zindex">Z-Index</label>
+      <input type="range" id="zindex" min="0" max="5" step="0.1" value="1" />
+      <button id="toggleRotation">Toggle Auto-Rotate</button>
+      <input type="file" id="imageInput" accept="image/*" />
+      <button id="reloadImage">Reload Image</button>
+      <button id="export">Export as 3D Object</button>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r110/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
     <script>
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(
@@ -145,21 +143,23 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
       const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = !0;
-      controls.screenSpacePanning = !0;
+      controls.enableDamping = true;
+      controls.screenSpacePanning = true;
       controls.maxDistance = 1000;
       controls.minDistance = 2;
-      controls.enableZoom = !0;
+      controls.enableZoom = true;
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
       let points = null;
-      let autoRotate = !0;
+      let autoRotate = true;
       let rotationSpeed = 0.002;
       let distance = 1;
       let zindex = 1;
+      let currentImage = null; // ذخیره تصویر فعلی
+
       function clearScene() {
         while (scene.children.length > 2) {
           const object = scene.children[2];
@@ -168,100 +168,230 @@
           if (object.material) object.material.dispose();
         }
       }
+
+      function loadImage(file) {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          let maxDim = 1200;
+          let scale = 1;
+          if (img.width > img.height) {
+            if (img.width > maxDim) {
+              scale = maxDim / img.width;
+            }
+          } else {
+            if (img.height > maxDim) {
+              scale = maxDim / img.height;
+            }
+          }
+
+          const newWidth = img.width * scale;
+          const newHeight = img.height * scale;
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+          ctx.drawImage(img, 0, 0, newWidth, newHeight);
+          const imageData = ctx.getImageData(0, 0, newWidth, newHeight);
+          const { data, width, height } = imageData;
+          const geometry = new THREE.BufferGeometry();
+          const vertices = [];
+          const colors = [];
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const index = (y * width + x) * 4;
+              const r = data[index];
+              const g = data[index + 1];
+              const b = data[index + 2];
+              const brightness = (r + g + b) / 3;
+              vertices.push(
+                (x - width / 2) * distance,
+                (y - height / 2) * distance,
+                -brightness * zindex
+              );
+              colors.push(r / 255, g / 255, b / 255);
+            }
+          }
+
+          geometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(vertices, 3)
+          );
+          geometry.setAttribute(
+            "color",
+            new THREE.Float32BufferAttribute(colors, 3)
+          );
+
+          const material = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: parseFloat(document.getElementById("pointSize").value),
+          });
+
+          points = new THREE.Points(geometry, material);
+          clearScene();
+          scene.add(points);
+          camera.position.z = Math.max(width, height) * 1.5;
+        };
+      }
+
       document
         .getElementById("imageInput")
-        .addEventListener("change", async (event) => {
+        .addEventListener("change", (event) => {
           const file = event.target.files[0];
-          if (!file) return;
-          const img = new Image();
-          img.src = URL.createObjectURL(file);
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, img.width, img.height);
-            const { data, width, height } = imageData;
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            const colors = [];
-            for (let y = 0; y < height; y++) {
-              for (let x = 0; x < width; x++) {
-                const index = (y * width + x) * 4;
-                const r = data[index];
-                const g = data[index + 1];
-                const b = data[index + 2];
-                const brightness = (r + g + b) / 3;
-                vertices.push(
-                  (x - width / 2) * distance,
-                  (y - height / 2) * distance,
-                  -brightness * zindex
-                );
-                colors.push(r / 255, g / 255, b / 255);
-              }
-            }
-            geometry.setAttribute(
-              "position",
-              new THREE.Float32BufferAttribute(vertices, 3)
-            );
-            geometry.setAttribute(
-              "color",
-              new THREE.Float32BufferAttribute(colors, 3)
-            );
-            const material = new THREE.PointsMaterial({
-              vertexColors: !0,
-              size: parseFloat(document.getElementById("pointSize").value),
-            });
-            points = new THREE.Points(geometry, material);
-            clearScene();
-            scene.add(points);
-            camera.position.z = Math.max(width, height) * 1.5;
-          };
+          if (file) {
+            currentImage = file;
+            loadImage(file);
+          }
         });
+
+      document.getElementById("reloadImage").addEventListener("click", () => {
+        if (currentImage) {
+          loadImage(currentImage);
+        }
+      });
+
       document
         .getElementById("pointSize")
         .addEventListener("input", (event) => {
           if (points) points.material.size = parseFloat(event.target.value);
         });
+
       document
         .getElementById("backgroundColor")
         .addEventListener("input", (event) => {
           renderer.setClearColor(event.target.value);
         });
+
       document
         .getElementById("rotationSpeed")
         .addEventListener("input", (event) => {
           rotationSpeed = parseFloat(event.target.value);
         });
+
       document.getElementById("zindex").addEventListener("input", (event) => {
         zindex = parseFloat(event.target.value);
+        if (currentImage) {
+          loadImage(currentImage);
+        }
       });
+
       document
         .getElementById("toggleRotation")
         .addEventListener("click", () => {
           autoRotate = !autoRotate;
         });
+      document.getElementById("export").addEventListener("click", () => {
+        if (currentImage) {
+          exportImage(currentImage);
+        }
+      });
+
       document.getElementById("toggleMenu").addEventListener("click", () => {
         document.getElementById("controls").classList.toggle("open");
       });
+
       function animate() {
         requestAnimationFrame(animate);
         if (points && autoRotate) points.rotation.y += rotationSpeed;
         controls.update();
         renderer.render(scene, camera);
       }
+
       window.addEventListener("resize", () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
+
       animate();
+      function exportImage(file) {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          let maxDim = 1200;
+          let scale = 1;
+          if (img.width > img.height) {
+            if (img.width > maxDim) {
+              scale = maxDim / img.width;
+            }
+          } else {
+            if (img.height > maxDim) {
+              scale = maxDim / img.height;
+            }
+          }
+
+          const newWidth = img.width * scale;
+          const newHeight = img.height * scale;
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+          ctx.drawImage(img, 0, 0, newWidth, newHeight);
+          const imageData = ctx.getImageData(0, 0, newWidth, newHeight);
+          const { data, width, height } = imageData;
+          let vertices = [];
+          const colors = [];
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const index = (y * width + x) * 4;
+              const r = data[index];
+              const g = data[index + 1];
+              const b = data[index + 2];
+              const brightness = (r + g + b) / 3;
+              vertices.push(
+                (x - width / 2) * 1, // x
+                (y - height / 2) * 1, // y
+                -brightness * 1, // z
+                r, // red
+                g, // green
+                b // blue
+              );
+            }
+          }
+
+          let plyData = "ply\n";
+          plyData += "format binary_little_endian 1.0\n";
+          plyData += `element vertex ${vertices.length / 6}\n`;
+          plyData += "property int x\n";
+          plyData += "property int y\n";
+          plyData += "property int z\n";
+          plyData += "property uchar red\n";
+          plyData += "property uchar green\n";
+          plyData += "property uchar blue\n";
+          plyData += "end_header\n";
+
+          const buffer = new ArrayBuffer(plyData.length + vertices.length * 4);
+          const view = new DataView(buffer);
+          let offset = 0;
+
+          // Write ply header
+          for (let i = 0; i < plyData.length; i++) {
+            view.setUint8(offset++, plyData.charCodeAt(i));
+          }
+
+          // Write vertex data
+          for (let i = 0; i < vertices.length; i++) {
+            view.setInt32(offset, vertices[i]);
+            offset += 4;
+          }
+
+          // Create a Blob from the binary data and trigger a download
+          const blob = new Blob([buffer], { type: "application/octet-stream" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "3dme.ply";
+          link.click();
+        };
+      }
     </script>
     <footer>
       Created with ❤️ by
-      <a class="link" href="https://github.com/MohammadrezaAmani">
-        Mohammadreza Amani</a
+      <a class="link" href="https://github.com/MohammadrezaAmani"
+        >Mohammadreza Amani</a
       >
     </footer>
   </body>
