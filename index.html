@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3DME | Mohammadreza Amani</title>
+
+    <!-- SEO Tags -->
+    <meta
+      name="description"
+      content="Discover captivating 3D visualizations and models with Mohammadreza Amani's cutting-edge 3D engine. Dive into an immersive world of interactive experiences and customization."
+    />
+    <meta
+      name="keywords"
+      content="3D Visualization, 3D Models, Interactive 3D, Mohammadreza Amani, Three.js, WebGL, 3D Graphics, Customization, Creative Technology"
+    />
+    <meta name="author" content="Mohammadreza Amani" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="3DME | Mohammadreza Amani" />
+    <meta
+      property="og:description"
+      content="Discover captivating 3D visualizations and models with Mohammadreza Amani's cutting-edge 3D engine. Dive into an immersive world of interactive experiences and customization."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://MohammadrezaAmani.github.io" />
+    <meta
+      property="og:image"
+      content="https://MohammadrezaAmani.github.io/preview-image.jpg"
+    />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="3DME | Mohammadreza Amani" />
+    <meta
+      property="twitter:description"
+      content="Discover captivating 3D visualizations and models with Mohammadreza Amani's cutting-edge 3D engine. Dive into an immersive world of interactive experiences and customization."
+    />
+    <meta
+      property="twitter:image"
+      content="https://MohammadrezaAmani.github.io/preview-image.jpg"
+    />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r110/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        position: relative;
+      }
+      #controls {
+        position: fixed;
+        top: 10px;
+        left: -300px;
+        z-index: 10;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: left 0.3s;
+      }
+      #controls.open {
+        left: 10px;
+      }
+      #controls input,
+      #controls label,
+      #controls button {
+        display: block;
+        margin-bottom: 8px;
+      }
+      #controls label {
+        font-size: 14px;
+        font-weight: bold;
+      }
+      #toggleMenu {
+        position: absolute;
+        top: 10px;
+        right: 50px;
+        z-index: 20;
+        background-color: #ff6347;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      footer {
+        position: fixed;
+        bottom: 10px;
+        width: 100%;
+        text-align: center;
+        font-size: 14px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toggleMenu">☰</div>
+    <div id="controls">
+      <label for="pointSize">Point Size</label
+      ><input
+        type="range"
+        id="pointSize"
+        min="0.1"
+        max="3"
+        step="0.1"
+        value="0.5"
+      /><label for="backgroundColor">Background Color</label
+      ><input type="color" id="backgroundColor" value="#000000" /><label
+        for="rotationSpeed"
+        >Rotation Speed</label
+      ><input
+        type="range"
+        id="rotationSpeed"
+        min="0"
+        max="0.02"
+        step="0.001"
+        value="0.002"
+      /><label for="zindex">Z-Index</label
+      ><input
+        type="range"
+        id="zindex"
+        min="0"
+        max="5"
+        step="0.1"
+        value="1"
+      /><button id="toggleRotation">Toggle Auto-Rotate</button
+      ><input type="file" id="imageInput" accept="image/*" />
+    </div>
+    <script>
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        5000
+      );
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = !0;
+      controls.screenSpacePanning = !0;
+      controls.maxDistance = 1000;
+      controls.minDistance = 2;
+      controls.enableZoom = !0;
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight);
+      let points = null;
+      let autoRotate = !0;
+      let rotationSpeed = 0.002;
+      let distance = 1;
+      let zindex = 1;
+      function clearScene() {
+        while (scene.children.length > 2) {
+          const object = scene.children[2];
+          scene.remove(object);
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) object.material.dispose();
+        }
+      }
+      document
+        .getElementById("imageInput")
+        .addEventListener("change", async (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          const img = new Image();
+          img.src = URL.createObjectURL(file);
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+            const { data, width, height } = imageData;
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            for (let y = 0; y < height; y++) {
+              for (let x = 0; x < width; x++) {
+                const index = (y * width + x) * 4;
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                const brightness = (r + g + b) / 3;
+                vertices.push(
+                  (x - width / 2) * distance,
+                  (y - height / 2) * distance,
+                  -brightness * zindex
+                );
+                colors.push(r / 255, g / 255, b / 255);
+              }
+            }
+            geometry.setAttribute(
+              "position",
+              new THREE.Float32BufferAttribute(vertices, 3)
+            );
+            geometry.setAttribute(
+              "color",
+              new THREE.Float32BufferAttribute(colors, 3)
+            );
+            const material = new THREE.PointsMaterial({
+              vertexColors: !0,
+              size: parseFloat(document.getElementById("pointSize").value),
+            });
+            points = new THREE.Points(geometry, material);
+            clearScene();
+            scene.add(points);
+            camera.position.z = Math.max(width, height) * 1.5;
+          };
+        });
+      document
+        .getElementById("pointSize")
+        .addEventListener("input", (event) => {
+          if (points) points.material.size = parseFloat(event.target.value);
+        });
+      document
+        .getElementById("backgroundColor")
+        .addEventListener("input", (event) => {
+          renderer.setClearColor(event.target.value);
+        });
+      document
+        .getElementById("rotationSpeed")
+        .addEventListener("input", (event) => {
+          rotationSpeed = parseFloat(event.target.value);
+        });
+      document.getElementById("zindex").addEventListener("input", (event) => {
+        zindex = parseFloat(event.target.value);
+      });
+      document
+        .getElementById("toggleRotation")
+        .addEventListener("click", () => {
+          autoRotate = !autoRotate;
+        });
+      document.getElementById("toggleMenu").addEventListener("click", () => {
+        document.getElementById("controls").classList.toggle("open");
+      });
+      function animate() {
+        requestAnimationFrame(animate);
+        if (points && autoRotate) points.rotation.y += rotationSpeed;
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+      animate();
+    </script>
+    <footer>Created with ❤️ by Mohammadreza Amani</footer>
+  </body>
+</html>
