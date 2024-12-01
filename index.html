@@ -343,9 +343,9 @@
               const b = data[index + 2];
               const brightness = (r + g + b) / 3;
               vertices.push(
-                (x - width / 2) * 1, // x
-                (y - height / 2) * 1, // y
-                -brightness * 1, // z
+                (x - width / 2) * distance,
+                (y - height / 2) * distance,
+                -brightness * zindex, // z
                 r, // red
                 g, // green
                 b // blue
